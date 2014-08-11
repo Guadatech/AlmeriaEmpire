@@ -1,22 +1,25 @@
 // master.ino
 
 #include <Wire.h>
+#include "comunicacion.h"
 
-#define COST_CONS 3
-#define COST_CAMI 3
-#define COST_M1 2
-#define COST_M2 5
-#define COST_M3 8
+#define TURN_TIME 5000       //Tiempo de espera entre turnos
 
-#define REC_LIM 8
+#define COST_CONS 3          //Coste de construir una casa
+#define COST_CAMI 3          //Coste de construir un camion
+#define COST_M1 2            //Coste de la mejora nivel 1
+#define COST_M2 5            //Coste de la mejora nivel 2
+#define COST_M3 8            //Coste de la mejora nivel 3
 
-#define AC_CAS 1
-#define AC_REC 2
-#define AC_CAM 3
-#define AC_ATA 4
+#define REC_LIM 8            //Limite de saturacion de recursos
+
+#define AC_CAS 1             //Accion Construir una casa
+#define AC_REC 2             //Codigo de accion de mejorar un recurso
+#define AC_CAM 3             //Codigo de accion de constuir un Camion
+#define AC_ATA 4             //Codigo de accion Atacar
 
 
-struct cliente{
+struct cliente{              //Estructura cliente, status basico del cliente y 4 variables temporales para gestion de ataques.
 
         String nombre;
 	int tomates;
@@ -34,7 +37,21 @@ struct cliente{
         int marRob;
 };
 
-int turno = 1;
+int turno = 0;              //Turno de la partida
+
+    char status1[9];        //estado del jugador 1
+    char status2[9];        //estado del jugador 2
+    
+    int jugada1=0;          //jugada que quiere realizar el jugador 1
+    int jugada2=0;          //jugada que quiere realizar el jugador 2
+    
+    int jugador1;
+    int jugador2;
+    int accion1;
+    int opcion1;
+    int accion2;
+    int opcion2;
+
 struct cliente cliente1;
 struct cliente cliente2;
 
@@ -55,7 +72,7 @@ struct cliente initCliente(struct cliente c,String nombre){
 	return c;
 }
 
-
+// Inicia las comunicacioneslos y establece los valores por defecto de los clietes 
 void setup() {
 	
 	cliente1 = initCliente(cliente1,"Cliente1");
@@ -65,8 +82,9 @@ void setup() {
 
 }
 
+// Rellena el array status con los datos del cliente
 void crearstatus(struct cliente c1, char status[]) {
-
+  
   status[0]=numeroAletra(c1.tomates);  
   status[1]=numeroAletra(c1.aTomates);  
   status[2]=numeroAletra(c1.lechugas);  
@@ -75,76 +93,93 @@ void crearstatus(struct cliente c1, char status[]) {
   status[5]=numeroAletra(c1.aMarmol);  
   status[6]=numeroAletra(c1.camiones);  
   status[7]=numeroAletra(c1.casas);
-  status[8]='\0';  
+  status[8]='\0';
 
 }
 
-void decodificar(
+int initSincronizacion(){
+   
+// 2 jugadores
+
+       enviarStatus(DIR_CLIENTE1,"START");
+       delay(37); 
+       enviarStatus(DIR_CLIENTE2,"START");
+       delay(37);       
+       enviarStatus(DIR_CLIENTE1,"START");
+       delay(37); 
+       enviarStatus(DIR_CLIENTE2,"START");
+       delay(37);
+         enviarStatus(DIR_CLIENTE1,"START");
+       delay(37); 
+       enviarStatus(DIR_CLIENTE2,"START");
+       delay(37);
+       
+       
+   while((jugada1!=166) && (jugada2!=266)) {
+       enviarStatus(DIR_CLIENTE1,"START");
+       delay(37); 
+       enviarStatus(DIR_CLIENTE2,"START");
+       delay(37);
+       enviarStatus(DIR_CLIENTE1,"START");
+       delay(37); 
+       enviarStatus(DIR_CLIENTE2,"START");
+       delay(37);
+       enviarStatus(DIR_CLIENTE1,"START");
+       delay(37); 
+       enviarStatus(DIR_CLIENTE2,"START");
+       delay(37);
+           Serial.println(turno);
+           Serial.println(" Enviado codigo: START y recibida señal: ");
+           Serial.println(jugada1);
+           Serial.println(jugada2);
+       jugada1=recibeJugada(DIR_CLIENTE1);   
+       delay(37);    
+       jugada2=recibeJugada(DIR_CLIENTE2);
+       delay(37); 
+       if ((jugada1==100) && (jugada2==200))
+       {
+         return 0;
+       }
+   }
+}
 
 void loop() {
-        
-    //comunicacion
-    const int address1 = 1;
-    const int address2 = 2;
-    char status1[9];
-    char status2[9];  
-    
-    
-    int jugada1 = recibeJugada(address1);
-    int jugada2 = recibeJugada(address2);
-
-    imprimirResumenTurno();      
-    //Serial.println(receivedValue);
-  
-
-    gestion_turno_2j(&cliente1,1,1, &cliente2,2,3);
-    crearstatus(cliente1, status1);
-    crearstatus(cliente2, status2);
  
-    Serial.println(status1);
-    Serial.println(status2);
+    if (turno==0){
+      initSincronizacion();
+    }
     
-    enviarStatus(address1, status1);
-    enviarStatus(address2, status2);  
-  
-  
-  
-/*  
-        Serial.println("Inicio del Juego, situacion Inicial");   
-        imprimirResumenTurno();         
-
-        Serial.println("Cliente 1 Accion:1-1 construye casa // Cliente 2 Accion:2-3  mejora marmol");         
-        gestion_turno_2j(&cliente1,1,1, &cliente2,2,3);
-        imprimirResumenTurno();        
-        turno++;              
-                     
-
-        Serial.println("Cliente 1 Accion:1-1 construye casa // Cliente 2 Accion:3-1 entrena camion");                    
-        gestion_turno_2j(&cliente1,1,1, &cliente2,3,1);
-        imprimirResumenTurno();        
-        turno++; 
-        
-
-        Serial.println("Cliente 1 Accion:1-1 construye casa // Cliente 2 Accion:3-1 entrena camion");             
-        gestion_turno_2j(&cliente1,1,1, &cliente2,3,1);
-        imprimirResumenTurno();        
-        turno++;  
-        
-
-        Serial.println("Cliente 1 Accion:1-1 construye casa // Cliente 2 Accion:3-1 entrena camion");          
-        gestion_turno_2j(&cliente1,1,1, &cliente2,3,1);
-        imprimirResumenTurno();        
-        turno++;   
-        
-
-        Serial.println("Cliente 1 Accion:1-1 construye casa  // Cliente 2 Accion:4-1 ataca a 1");            
-        gestion_turno_2j(&cliente1,1,1, &cliente2,4,1);
-        imprimirResumenTurno();        
-        turno++;   
-  
-*/        
-        delay(20000);
-        
+    turno++;     
+    crearstatus(cliente1, status1);
+    crearstatus(cliente2, status2);     
+    enviarStatus(DIR_CLIENTE1, status1);
+    enviarStatus(DIR_CLIENTE2, status2);
+    Serial.println(status1);
+    Serial.println(status2);    
+   
+    delay(TURN_TIME);  
+    
+    //Terminar Partida
+        if((cliente1.casas==8) || (cliente2.casas==8)){
+           if(cliente1.casas==8) {
+             Serial.println(" Jugador 1 ha ganado"); 
+           }
+           if(cliente2.casas==8) {
+             Serial.println(" Jugador 2 ha ganado"); 
+           }
+           exit(0);
+        }     
+    
+    jugada1 = recibeJugada(DIR_CLIENTE1);
+    jugada2 = recibeJugada(DIR_CLIENTE2); 
+    decodificar(jugada1,&jugador1,&accion1,&opcion1);
+    decodificar(jugada2,&jugador2,&accion2,&opcion2);
+    Serial.println(jugada1);
+    Serial.println(jugada2); 
+    
+    imprimirResumenTurno();        
+    gestion_turno_2j(&cliente1,accion1,opcion1, &cliente2,accion2,opcion2);
+          
 }
 
 
@@ -185,6 +220,8 @@ void gestion_turno_2j(struct cliente *c1,int a1, int op1, struct cliente *c2,int
   *c2 = liberarAlmacen(*c2); 
   
 }
+
+///Cliente intenta construir un numero de casa
 struct cliente construir(int ncasas, struct cliente c){
 	
 	if(c.tomates>=ncasas*COST_CONS && c.lechugas>=ncasas*COST_CONS){
@@ -195,6 +232,7 @@ struct cliente construir(int ncasas, struct cliente c){
         return c;
 }
 
+//Cliente intenta realizar una accion de mejora sobre las estructuras
 struct cliente mejorar(int mejora,struct cliente c){
 
 	if(mejora==1){
@@ -284,6 +322,7 @@ struct cliente mejorar(int mejora,struct cliente c){
   return c;
 }
 
+//Cliente intenta construir camiones
 struct cliente construirCamion(int ncamiones, struct cliente c){
 	if(c.marmol>=ncamiones*COST_CAMI){
 		c.marmol = c.marmol-ncamiones*COST_CAMI;
@@ -292,6 +331,7 @@ struct cliente construirCamion(int ncamiones, struct cliente c){
   return c;
 }
 
+//Aumento automatico de recursos segun el nivel de sus estructuras
 struct cliente recursos(struct cliente c){
     c.tomates+=c.aTomates;
     c.lechugas+=c.aLechugas;
@@ -299,6 +339,7 @@ struct cliente recursos(struct cliente c){
 return c;
 }
 
+//Eliminacion de los excedentes de recursos en almacenes
 struct cliente liberarAlmacen(struct cliente c){
     if (c.tomates>REC_LIM){
           c.tomates=REC_LIM;
@@ -312,7 +353,69 @@ struct cliente liberarAlmacen(struct cliente c){
     if (c.casas>REC_LIM){
           c.casas=REC_LIM;
         }
+    if (c.camiones>REC_LIM){
+          c.camiones=REC_LIM;
+        }
     return c;
+}
+
+
+
+
+//Gestion pre-ataque de camiones
+struct cliente moverCamiones(struct cliente c){
+  c.cMovimiento=c.camiones;
+  c.camiones=0;
+  return c;
+
+}
+
+//Gestiona el post-ataque de camiones y recursos robados
+struct cliente volverCamiones(struct cliente c){
+  c.tomates+=c.tomRob;
+  c.lechugas+=c.lecRob;
+  c.marmol+=c.marRob;
+  c.tomRob=0;
+  c.lecRob=0;
+  c.marRob=0;
+  c.camiones=c.cMovimiento;
+  c.cMovimiento=0;
+  return c;
+}
+
+//Gestiona el ataque entre el Cliente Atacante ca y el cliente defenor cd. Y resuelve los robos si hubuese camiones restantes
+void ataque(struct cliente *ca, struct cliente *cd){
+    if (ca->cMovimiento >= cd->camiones){
+      ca->cMovimiento-=cd->camiones;
+      cd->camiones=0;
+    }
+    else{
+    cd->camiones-=ca->cMovimiento;
+    ca->cMovimiento=0;  
+    }
+    if (ca->cMovimiento>0){
+      for (int i=ca->cMovimiento; i>0;){
+        if(cd->tomates>0 && i>=1){
+          cd->tomates--;
+          ca->tomRob++;
+          i--;
+        }
+        if(cd->lechugas>0 && i>=1){
+          cd->lechugas--;
+          ca->lecRob++;
+          i--;
+        }
+        if(cd->marmol>0 && i>=1){
+          cd->marmol--;
+          ca->marRob++;
+          i--;
+        }
+        if (cd->tomates==0 && cd->lechugas==0 && cd->marmol==0) {
+        //  Serial.println("saliendo");
+          break;
+        }
+      } 
+    } 
 }
 
 void imprimirCliente(struct cliente c){  
@@ -352,140 +455,7 @@ void imprimirResumenTurno(){
         imprimirCliente(cliente1);
         imprimirCliente(cliente2);
         Serial.println(""); 
-}
-
-struct cliente moverCamiones(struct cliente c){
-  c.cMovimiento=c.camiones;
-  c.camiones=0;
-  return c;
 
 }
-
-struct cliente volverCamiones(struct cliente c){
-  c.tomates+=c.tomRob;
-  c.lechugas+=c.lecRob;
-  c.marmol+=c.marRob;
-  c.tomRob=0;
-  c.lecRob=0;
-  c.marRob=0;
-  c.camiones=c.cMovimiento;
-  c.cMovimiento=0;
-  return c;
-}
-
-void ataque(struct cliente *ca, struct cliente *cd){
-    if (ca->cMovimiento >= cd->camiones){
-      ca->cMovimiento-=cd->camiones;
-      cd->camiones=0;
-    }
-    else{
-    cd->camiones-=ca->cMovimiento;
-    ca->cMovimiento=0;  
-    }
-    if (ca->cMovimiento>0){
-    for (int i=ca->cMovimiento; i>0;){
-      if(cd->tomates>0 && i>=1){
-        cd->tomates--;
-        ca->tomRob++;
-        i--;
-      }
-      if(cd->lechugas>0 && i>=1){
-        cd->lechugas--;
-        ca->lecRob++;
-        i--;
-      }
-      if(cd->marmol>0 && i>=1){
-        cd->marmol--;
-        ca->marRob++;
-        i--;
-      }
-      if (cd->tomates==0 && cd->lechugas==0 && cd->marmol==0) {
-        Serial.println("saliendo");
-            break;
-      }
-    } 
-    } 
-}
-
-
-
-void enviarStatus(int address, char status[])
-/* Envia el status del jugador de direccion address a ese jugador 
-  El estatus sera un codigo de 8 digitos
-  El primero sera el numero de tomates 
-  El segundo el nivel de los tomates
-  El tercero el numero de lechugas
-  El cuarto el nivel de lechugas
-  el quito el numero de marmol
-  el sexto el nivel de marmol
-  el septimo el numero de camiones
-  y el octavo el numero de casas*/
-{
-  Wire.beginTransmission(address); 
-  Wire.write('i');
-  delay(10);
-  Wire.write(status[0]);
-  delay(10);
-  Wire.write(status[1]);
-  delay(10);
-  Wire.write(status[2]);
-  delay(10);
-  Wire.write(status[3]);
-  delay(10);
-  Wire.write(status[4]);
-  delay(10);
-  Wire.write(status[5]);
-  delay(10);
-  Wire.write(status[6]);
-  delay(10);
-  Wire.write(status[7]);
-  delay(10);
-  Wire.endTransmission();
- 
-}
-
-
-int recibeJugada(int direccion)
-/* El Master manda al esclavo con direccion "direccion"  la peticion de la 
-  jugada que va a realizar y retorna el codigo de jugada enviada 
-  los codigos de jugada son numeros de tres digitos, 
-  el primero es la direccion del jugador
-  el segundo es la accion a realizar
-  y el tercero es el destinatario */
-{
-  int receivedValue;
-  // Request data from slave.
-  Wire.beginTransmission(direccion);
-  
-  // Envia al cliente de direccion 4 la peticion y se queda a la espera de 
-  // recibir un byte
-  int available = Wire.requestFrom(direccion, 4); 
- 
-   if(available == 4)
-    {
-      receivedValue = Wire.read() << 8 | Wire.read();
-    }
-    else
-    {
-      Serial.print("Unexpected number of bytes received: ");
-      Serial.println(available);
-    }
-    Wire.endTransmission();
-    return receivedValue;
-   
-}
-
-char numeroAletra(int num){
-  char b[2];
-  String str;
-  str=String(num);
-  str.toCharArray(b,2);  
-  return str.charAt(0);
-}
-
-int letraAnumero(char letra){
-   return letra - '0'; 
-}
-
 
 

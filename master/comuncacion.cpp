@@ -4,46 +4,9 @@
 *  Send Serial data to the slave
 */
 
-#include <Wire.h> 
+#include "comunicacion.h"
+#include <Wire.h>
 
-void decodificar(int mensaje, int *cliente, int *accion, int *opcion)
-{
-  *cliente=(int) mensaje/100;
-  *accion=(int) (mensaje-(*cliente*100))/10;
-  *opcion=(int) (mensaje-(*cliente*100))-(*accion*10);
-  
-}
-
-
-void setup()
-{
-    Serial.begin(9600);
-    Wire.begin(); 
-}
-
-
-void loop()
-{
-  
-
-  
-  int receivedValue1 = recibeJugada(1);
-  Serial.println(receivedValue1);
-  
-  int receivedValue2 = recibeJugada(2);
-  Serial.println(receivedValue2);
-  
-  delay(3000);
-  
-  enviarStatus(1, "44444444"); // enviar estado de sus recursos al inicio de la jugada al jugador 4 
-  enviarStatus(2, "22222222");//    "         "        "        "      "      "      "      3 
-  int a=0;
-  int b=0;
-  int c=0;
-  decodificar(123, &a, &b , &c);
-  Serial.println("resultado");
-  Serial.println(a);Serial.println(b);Serial.println(c);
-}
 
 void enviarStatus(int address, char status[])
 /* Envia el status del jugador de direccion address a ese jugador 
@@ -81,11 +44,9 @@ void enviarStatus(int address, char status[])
 }
 
 
-
-
 int recibeJugada(int direccion)
-/*El Master manda al esclavo con direccion "direccion"  la peticion la peticion de la 
-  jugada que va a realizar y retorna el codigo de jugada enviada por el esclavo
+/* El Master manda al esclavo con direccion "direccion"  la peticion de la 
+  jugada que va a realizar y retorna el codigo de jugada enviada 
   los codigos de jugada son numeros de tres digitos, 
   el primero es la direccion del jugador
   el segundo es la accion a realizar
@@ -127,9 +88,17 @@ char numeroAletra(int num)
   return str.charAt(0);
 }
 
+void decodificar(int mensaje, int *cliente, int *accion, int *opcion)
+{
+  *cliente=(int) mensaje/100;
+  *accion=(int) (mensaje-(*cliente*100))/10;
+  *opcion=(int) (mensaje-(*cliente*100))-(*accion*10);
+  
+}
 
 int letraAnumero(char letra)
 {
    return letra - '0'; 
 }
+
 
